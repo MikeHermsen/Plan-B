@@ -11,10 +11,6 @@ def test():
 def receive_data():
     data = request.json
     print("Data Received:", data)
-    write = open("data.txt", "a")
-    write.write(str(data))
-    write.close()
-
     return jsonify(status="success", data=data)
 
 
