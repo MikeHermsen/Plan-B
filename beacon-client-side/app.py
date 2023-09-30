@@ -1,29 +1,58 @@
 from selenium import webdriver
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import WebDriverException
 import requests
 import json
 
-# Remote WebDriver configuration
-#options = webdriver.ChromeOptions()
-#driver = webdriver.Remote(
-#    command_executor="http://selenium:4444/wd/hub",
-#    options=options
-#)
 
-# Replace this URL with the URL of the page you want to scrape
-url = "http://example.com"
-#driver.get(url)
+def scrape():
+    url = "https://www.dhl.com/nl-nl/home/traceren.html?tracking-id=awdwa&submit=1"
+    options = Options()
+    options.headless = True
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    try:
+        driver = webdriver.Remote(
+            command_executor="http://0.0.0.0:4444/wd/hub",
+            options=options
+        )
+        driver.get(url)
+        print("Page HTML:", driver.page_source)
 
-# Scrape titles (replace with your actual scraping code)
-#titles = driver.find_elements_by_tag_name('h1')
-#titles_list = [title.text for title in titles]
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "span.c-tracking-result-message--content"))
+        ).text
+        print("Tracking Result:", element)
+        data = {
+            "tracking_id": "awdwa",
+            "tracking_result": element
+        }
+        send(data)
+    except WebDriverException as e:
+        print("The page crashed. Error:", str(e))
+    except Exception as e:
+        print("An error occurred while scraping:", str(e))
+    finally:
+        driver.quit()
 
-# Convert data to JSON
-titles_list = ['hahaha']
-data = json.dumps({"titles": titles_list})
 
-# Send data to Flask server
-server_url = "http://172.17.0.1:5000/recive_data"
-requests.post(server_url, json=json.loads(data))
+def send(data):
+    server_url = "http://172.17.0.1:5000/receive_data"
+    headers = {'Content-type': 'application/json'}
+    try:
+        response = requests.post(
+            server_url, data=json.dumps(data), headers=headers)
+        print("Response from server:", response.text)
+    except Exception as e:
+        print("An error occurred while sending data to the server:", str(e))
 
-#driver.quit()
+
+if __name__ == "__main__":
+    print("Starting scraping process...")
+    scrape()
+    print("Scraping process completed.")
